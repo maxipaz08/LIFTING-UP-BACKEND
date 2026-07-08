@@ -123,7 +123,7 @@ exports.updateUsuario = async (req, res) => {
         }
 
         await db.query(
-            `UPDATE Usuarios SET
+            `UPDATE usuarios SET
                 nombre               = COALESCE(?, nombre),
                 apellido             = COALESCE(?, apellido),
                 email                = COALESCE(?, email),
