@@ -200,9 +200,9 @@ exports.login = async (req, res) => {
     }
 
     try {
-        // 1. Buscar en Admins
+        // 1. Buscar en admins
         const [admins] = await db.query(
-            'SELECT * FROM Admins WHERE email = ? AND password = ?',
+            'SELECT * FROM admins WHERE email = ? AND password = ?',
             [email, password]
         );
         if (admins.length > 0) {
