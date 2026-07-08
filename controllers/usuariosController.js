@@ -23,7 +23,7 @@ const normalizeUsuario = (u) => ({
 // ─── GET /api/usuarios — Obtener todos ────────────────────────────────────
 exports.getUsuarios = async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM Usuarios ORDER BY id_usuario ASC');
+        const [rows] = await db.query('SELECT * FROM usuarios ORDER BY id_usuario ASC');
         const data = rows.map(normalizeUsuario);
         res.json({ success: true, data });
     } catch (error) {
@@ -36,7 +36,7 @@ exports.getUsuarios = async (req, res) => {
 exports.getUsuarioById = async (req, res) => {
     const { id } = req.params;
     try {
-        const [rows] = await db.query('SELECT * FROM Usuarios WHERE id_usuario = ?', [id]);
+        const [rows] = await db.query('SELECT * FROM usuarios WHERE id_usuario = ?', [id]);
         if (rows.length === 0) {
             return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
         }
@@ -65,13 +65,13 @@ exports.createUsuario = async (req, res) => {
 
     try {
         // Verificar email duplicado
-        const [existentes] = await db.query('SELECT id_usuario FROM Usuarios WHERE email = ?', [email]);
+        const [existentes] = await db.query('SELECT id_usuario FROM usuarios WHERE email = ?', [email]);
         if (existentes.length > 0) {
             return res.status(409).json({ success: false, message: 'El email ya está registrado' });
         }
 
         const [result] = await db.query(
-            `INSERT INTO Usuarios 
+            `INSERT INTO usuarios 
                 (nombre, apellido, email, password, peso, altura, 
                  objetivo, nivel_entrenamiento, activo, id_admin)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
@@ -86,7 +86,7 @@ exports.createUsuario = async (req, res) => {
         );
 
         // Devolver el usuario creado completo
-        const [newRows] = await db.query('SELECT * FROM Usuarios WHERE id_usuario = ?', [result.insertId]);
+        const [newRows] = await db.query('SELECT * FROM usuarios WHERE id_usuario = ?', [result.insertId]);
         res.status(201).json({
             success: true,
             message: 'Usuario creado exitosamente',
@@ -109,7 +109,7 @@ exports.updateUsuario = async (req, res) => {
 
     try {
         // Verificar que existe
-        const [usuarios] = await db.query('SELECT * FROM Usuarios WHERE id_usuario = ?', [id]);
+        const [usuarios] = await db.query('SELECT * FROM usuarios WHERE id_usuario = ?', [id]);
         if (usuarios.length === 0) {
             return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
         }
@@ -149,7 +149,7 @@ exports.updateUsuario = async (req, res) => {
         );
 
         // Devolver el usuario actualizado
-        const [updated] = await db.query('SELECT * FROM Usuarios WHERE id_usuario = ?', [id]);
+        const [updated] = await db.query('SELECT * FROM usuarios WHERE id_usuario = ?', [id]);
         res.json({
             success: true,
             message: 'Usuario actualizado exitosamente',
@@ -167,7 +167,7 @@ exports.deleteUsuario = async (req, res) => {
 
     try {
         // Verificar que existe antes de borrar
-        const [usuarios] = await db.query('SELECT id_usuario, nombre, apellido FROM Usuarios WHERE id_usuario = ?', [id]);
+        const [usuarios] = await db.query('SELECT id_usuario, nombre, apellido FROM usuarios WHERE id_usuario = ?', [id]);
         if (usuarios.length === 0) {
             return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
         }
@@ -175,7 +175,7 @@ exports.deleteUsuario = async (req, res) => {
         const usuario = usuarios[0];
 
         // Eliminar el usuario (las tablas relacionadas tienen ON DELETE CASCADE)
-        const [result] = await db.query('DELETE FROM Usuarios WHERE id_usuario = ?', [id]);
+        const [result] = await db.query('DELETE FROM usuarios WHERE id_usuario = ?', [id]);
 
         if (result.affectedRows === 0) {
             return res.status(500).json({ success: false, message: 'No se pudo eliminar el usuario' });
