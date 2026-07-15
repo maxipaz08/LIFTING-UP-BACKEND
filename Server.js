@@ -10,9 +10,11 @@ app.use(express.json());
 
 // Importar Rutas
 const usuariosRoutes = require('./routes/usuarios');
+const adminsRoutes = require('./routes/adminsRoutes');
 
 // Rutas base
 app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/admins', adminsRoutes);
 
 app.get('/', (req, res) => {
     res.send('Servidor API LIFTING UP funcionando correctamente');
