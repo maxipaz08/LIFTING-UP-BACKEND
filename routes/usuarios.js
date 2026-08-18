@@ -17,6 +17,12 @@ router.post('/', usuariosController.createUsuario);
 // ── PUT /api/usuarios/:id — Actualizar un usuario ──
 router.put('/:id', usuariosController.updateUsuario);
 
+// ── POST /api/usuarios/verificar-email — Verificar email ──
+router.post('/verificar-email', usuariosController.verificarEmail);
+
+// ── POST /api/usuarios/reenviar-codigo — Reenviar código ──
+router.post('/reenviar-codigo', usuariosController.reenviarCodigo);
+
 // ── DELETE /api/usuarios/:id — Eliminar un usuario ──
 router.delete('/:id', usuariosController.deleteUsuario);
 

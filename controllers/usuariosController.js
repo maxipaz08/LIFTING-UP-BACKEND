@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { enviarCodigoVerificacion } = require('../services/emailService');
 
 // ─── Helper: normalizar usuario para el frontend ───────────────────────────
 // El frontend espera { id, nombre, apellido, email, ... }
@@ -14,6 +15,7 @@ const normalizeUsuario = (u) => ({
     altura: u.altura,
     objetivo: u.objetivo,
     nivel_entrenamiento: u.nivel_entrenamiento,
+    email_verificado: u.email_verificado,
     estado: u.activo === 1 || u.activo === true ? 'Activo' : 'Inactivo',
     activo: u.activo,
     id_admin: u.id_admin,
@@ -63,6 +65,14 @@ exports.createUsuario = async (req, res) => {
         });
     }
 
+    const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!pwdRegex.test(password)) {
+        return res.status(400).json({
+            success: false,
+            message: 'La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula y un número.'
+        });
+    }
+
     try {
         // Verificar email duplicado
         const [existentes] = await db.query('SELECT id_usuario FROM usuarios WHERE email = ?', [email]);
@@ -70,26 +80,37 @@ exports.createUsuario = async (req, res) => {
             return res.status(409).json({ success: false, message: 'El email ya está registrado' });
         }
 
+        const codigo_verificacion = Math.floor(100000 + Math.random() * 900000).toString();
+        const codigo_expira = new Date(Date.now() + 15 * 60000);
+        const ultimo_reenvio = new Date();
+
         const [result] = await db.query(
             `INSERT INTO usuarios 
                 (nombre, apellido, email, password, peso, altura, 
-                 objetivo, nivel_entrenamiento, activo, id_admin)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+                 objetivo, nivel_entrenamiento, activo, id_admin,
+                 email_verificado, codigo_verificacion, codigo_expira, ultimo_reenvio)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, ?, ?, ?)`,
             [
                 nombre, apellido, email, password,
                 peso || null,
                 altura || null,
                 objetivo || null,
                 nivel_entrenamiento || 'Principiante',
-                id_admin || null
+                id_admin || null,
+                codigo_verificacion,
+                codigo_expira,
+                ultimo_reenvio
             ]
         );
+
+        // Enviar código por correo
+        enviarCodigoVerificacion(email, codigo_verificacion).catch(err => console.error('Error enviando email:', err));
 
         // Devolver el usuario creado completo
         const [newRows] = await db.query('SELECT * FROM usuarios WHERE id_usuario = ?', [result.insertId]);
         res.status(201).json({
             success: true,
-            message: 'Usuario creado exitosamente',
+            message: 'Usuario creado correctamente',
             data: normalizeUsuario(newRows[0])
         });
     } catch (error) {
@@ -106,6 +127,10 @@ exports.updateUsuario = async (req, res) => {
         peso, altura,
         objetivo, nivel_entrenamiento, estado, activo
     } = req.body;
+
+    if (!password) {
+        return res.status(400).json({ success: false, message: 'La contraseña es obligatoria al editar el usuario.' });
+    }
 
     try {
         // Verificar que existe
@@ -234,6 +259,97 @@ exports.login = async (req, res) => {
         return res.status(401).json({ success: false, message: 'Email o contraseña incorrectos' });
     } catch (error) {
         console.error('Error en el login:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor' });
+    }
+};
+
+// ─── POST /api/usuarios/verificar-email — Verificar email ─────────────────
+exports.verificarEmail = async (req, res) => {
+    const { email, codigo } = req.body;
+
+    if (!email || !codigo) {
+        return res.status(400).json({ success: false, message: 'Email y código son requeridos' });
+    }
+
+    try {
+        const [usuarios] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
+        if (usuarios.length === 0) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+        }
+
+        const usuario = usuarios[0];
+
+        if (usuario.email_verificado === 1) {
+            return res.status(400).json({ success: false, message: 'El email ya está verificado' });
+        }
+
+        if (!usuario.codigo_verificacion || usuario.codigo_verificacion !== codigo.toString()) {
+            return res.status(400).json({ success: false, message: 'El código ingresado es incorrecto.' });
+        }
+
+        if (new Date(usuario.codigo_expira) < new Date()) {
+            return res.status(400).json({ success: false, message: 'El código venció. Solicitá uno nuevo.' });
+        }
+
+        await db.query(
+            'UPDATE usuarios SET email_verificado = 1, activo = 1, codigo_verificacion = NULL, codigo_expira = NULL WHERE email = ?',
+            [email]
+        );
+
+        res.json({ success: true, message: 'Email verificado correctamente' });
+    } catch (error) {
+        console.error('Error al verificar email:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor' });
+    }
+};
+
+// ─── POST /api/usuarios/reenviar-codigo — Reenviar código ─────────────────
+exports.reenviarCodigo = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ success: false, message: 'Email requerido' });
+    }
+
+    try {
+        const [usuarios] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
+        if (usuarios.length === 0) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+        }
+
+        const usuario = usuarios[0];
+
+        if (usuario.email_verificado === 1) {
+            return res.status(400).json({ success: false, message: 'El email ya está verificado' });
+        }
+
+        if (usuario.ultimo_reenvio) {
+            const tiempoTranscurrido = new Date() - new Date(usuario.ultimo_reenvio);
+            const tiempoMinimo = 60 * 1000; // 60 segundos
+            if (tiempoTranscurrido < tiempoMinimo) {
+                const tiempoFaltante = Math.ceil((tiempoMinimo - tiempoTranscurrido) / 1000);
+                return res.status(400).json({
+                    success: false,
+                    message: `Debes esperar ${tiempoFaltante} segundos antes de solicitar otro código.`
+                });
+            }
+        }
+
+        const codigo_verificacion = Math.floor(100000 + Math.random() * 900000).toString();
+        const codigo_expira = new Date(Date.now() + 15 * 60000);
+        const ultimo_reenvio = new Date();
+
+        await db.query(
+            'UPDATE usuarios SET codigo_verificacion = ?, codigo_expira = ?, ultimo_reenvio = ? WHERE email = ?',
+            [codigo_verificacion, codigo_expira, ultimo_reenvio, email]
+        );
+
+        // Enviar nuevo código
+        enviarCodigoVerificacion(email, codigo_verificacion).catch(err => console.error('Error enviando email:', err));
+
+        res.json({ success: true, message: 'Código reenviado correctamente' });
+    } catch (error) {
+        console.error('Error al reenviar código:', error);
         res.status(500).json({ success: false, message: 'Error del servidor' });
     }
 };
