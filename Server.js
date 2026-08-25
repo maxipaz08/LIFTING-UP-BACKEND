@@ -5,13 +5,16 @@ require('dotenv').config();
 const app = express();
 
 // Middlewares
+// Configuración permisiva de CORS para producción y local
 app.use(cors({
-    origin: [
-        'https://liftingup.netlify.app',
-        'http://localhost:5173',
-        'http://localhost:3000'
-    ]
+    origin: '*', // Permite peticiones desde Netlify, Localhost y cualquier origen
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true
 }));
+
+// Manejar de forma explícita las peticiones preflight (OPTIONS)
+app.options('*', cors());
 app.use(express.json());
 
 // Importar Rutas
