@@ -5,16 +5,13 @@ require('dotenv').config();
 const app = express();
 
 // Middlewares
-// Configuración permisiva de CORS para producción y local
+// O si prefieres configurar los headers explícitamente:
 app.use(cors({
-    origin: '*', // Permite peticiones desde Netlify, Localhost y cualquier origen
+    origin: true, // Permite dinámicamente el origen de la petición (Netlify, Localhost, etc.)
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
-
-// Manejar de forma explícita las peticiones preflight (OPTIONS)
-app.options('*', cors());
 app.use(express.json());
 
 // Importar Rutas
