@@ -25,12 +25,18 @@ const normalizeUsuario = (u) => ({
 // ─── GET /api/usuarios — Obtener todos ────────────────────────────────────
 exports.getUsuarios = async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT * FROM usuarios ORDER BY id_usuario ASC');
+        const [rows] = await db.query(
+            'SELECT id_usuario, nombre, apellido, email, password, peso, altura, objetivo, nivel_entrenamiento, activo, id_admin, email_verificado FROM usuarios ORDER BY id_usuario ASC'
+        );
         const data = rows.map(normalizeUsuario);
-        res.json({ success: true, data });
+        return res.json({ success: true, data });
     } catch (error) {
-        console.error('Error al obtener usuarios:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor' });
+        console.error('Error detallado en ruta usuarios:', error.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Error al consultar la tabla de usuarios',
+            error: error.message 
+        });
     }
 };
 
@@ -245,7 +251,7 @@ exports.login = async (req, res) => {
 
         // 2. Buscar en Usuarios
         const [usuarios] = await db.query(
-            'SELECT * FROM Usuarios WHERE email = ? AND password = ? AND activo = 1',
+            'SELECT id_usuario, nombre, apellido, email, password, peso, altura, objetivo, nivel_entrenamiento, activo, id_admin, email_verificado FROM usuarios WHERE email = ? AND password = ? AND activo = 1',
             [email, password]
         );
         if (usuarios.length > 0) {
@@ -258,18 +264,28 @@ exports.login = async (req, res) => {
         // 3. No encontrado
         return res.status(401).json({ success: false, message: 'Email o contraseña incorrectos' });
     } catch (error) {
-        console.error('Error en el login:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor' });
+        console.error('Error detallado en ruta usuarios:', error.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Error al consultar la tabla de usuarios',
+            error: error.message 
+        });
     }
 };
 
 // ─── POST /api/usuarios/verificar-email — Verificar email ─────────────────
 exports.verificarEmail = async (req, res) => {
-    const { email, codigo } = req.body;
+    console.log("Req Body recibida:", req.body);
+    let { email, codigo } = req.body;
 
-    if (!email || !codigo) {
-        return res.status(400).json({ success: false, message: 'Email y código son requeridos' });
+    if (!email || email.trim() === '') {
+        return res.status(400).json({ success: false, message: 'El campo email es requerido' });
     }
+    if (!codigo) {
+        return res.status(400).json({ success: false, message: 'El código es requerido' });
+    }
+
+    email = email.trim().toLowerCase();
 
     try {
         const [usuarios] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
@@ -298,18 +314,21 @@ exports.verificarEmail = async (req, res) => {
 
         res.json({ success: true, message: 'Email verificado correctamente' });
     } catch (error) {
-        console.error('Error al verificar email:', error);
+        console.error('Error SQL al verificar email:', error);
         res.status(500).json({ success: false, message: 'Error del servidor' });
     }
 };
 
 // ─── POST /api/usuarios/reenviar-codigo — Reenviar código ─────────────────
 exports.reenviarCodigo = async (req, res) => {
-    const { email } = req.body;
+    console.log("Req Body recibida:", req.body);
+    let { email } = req.body;
 
-    if (!email) {
-        return res.status(400).json({ success: false, message: 'Email requerido' });
+    if (!email || email.trim() === '') {
+        return res.status(400).json({ success: false, message: 'El campo email es requerido' });
     }
+
+    email = email.trim().toLowerCase();
 
     try {
         const [usuarios] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
@@ -349,7 +368,7 @@ exports.reenviarCodigo = async (req, res) => {
 
         res.json({ success: true, message: 'Código reenviado correctamente' });
     } catch (error) {
-        console.error('Error al reenviar código:', error);
+        console.error('Error SQL al reenviar código:', error);
         res.status(500).json({ success: false, message: 'Error del servidor' });
     }
 };

@@ -5,7 +5,13 @@ require('dotenv').config();
 const app = express();
 
 // Middlewares
-app.use(cors());
+app.use(cors({
+    origin: [
+        'https://liftingup.netlify.app',
+        'http://localhost:5173',
+        'http://localhost:3000'
+    ]
+}));
 app.use(express.json());
 
 // Importar Rutas
