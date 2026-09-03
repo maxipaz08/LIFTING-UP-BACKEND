@@ -1,18 +1,26 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+// Usamos host, puerto 465 e IPv4 explícitos para Render
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // You can change this or use host/port for other providers
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Debe ser true para el puerto 465
+    family: 4,    // Forzar IPv4 (soluciona el error ENETUNREACH)
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
-    }
+    },
+    tls: {
+        rejectUnauthorized: false // Evita fallos por certificados intermedios
+    },
+    connectionTimeout: 10000 // Tiempo límite de conexión de 10 segundos
 });
 
 const enviarCodigoVerificacion = async (to, code) => {
     try {
         const mailOptions = {
-            from: process.env.EMAIL_FROM || '"LIFTING UP" <no-reply@liftingup.com>',
+            from: process.env.EMAIL_FROM || '"LIFTING UP" <liftingup.app@gmail.com>',
             to,
             subject: 'Verifica tu cuenta - LIFTING UP',
             html: `
