@@ -4,6 +4,23 @@ require('dotenv').config();
 
 const app = express();
 
+
+app.use(cors({
+    origin: 'https://liftingup.netlify.app',           // permite cualquier origen
+    credentials: true      // permite cookies / headers autorizacion
+}));
+
+app.use(express.json());
+
+app.get('/', (req, res) => {
+    res.send('Servidor API corriendo');
+});
+
+app.listen(PORT, () => {
+    console.log(`Servidor corriendo en puerto ${port}`);
+});
+
+
 // Middlewares
 // O si prefieres configurar los headers explícitamente:
 app.use(cors({
