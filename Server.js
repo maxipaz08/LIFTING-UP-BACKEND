@@ -4,31 +4,14 @@ require('dotenv').config();
 
 const app = express();
 
-
+// Configuración de CORS única para Netlify y desarrollo local
 app.use(cors({
-    origin: 'https://liftingup.netlify.app',           // permite cualquier origen
-    credentials: true      // permite cookies / headers autorizacion
-}));
-
-app.use(express.json());
-
-app.get('/', (req, res) => {
-    res.send('Servidor API corriendo');
-});
-
-app.listen(PORT, () => {
-    console.log(`Servidor corriendo en puerto ${port}`);
-});
-
-
-// Middlewares
-// O si prefieres configurar los headers explícitamente:
-app.use(cors({
-    origin: true, // Permite dinámicamente el origen de la petición (Netlify, Localhost, etc.)
+    origin: true, // Permite dinámicamente Netlify, Localhost, etc.
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
+
 app.use(express.json());
 
 // Importar Rutas
@@ -38,7 +21,7 @@ const rutinasRoutes = require('./routes/rutinas');
 const asistenciaRoutes = require('./routes/asistencia');
 const ejerciciosRoutes = require('./routes/ejercicios');
 
-// Rutas base
+// Registrar Rutas base
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/admins', adminsRoutes);
 app.use('/api/rutinas', rutinasRoutes);
